@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import { appConfig } from './config/jwt';
 import authRoutes from './routes/auth';
 import cvRoutes from './routes/cv';
+import userRoutes from './routes/user';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.get('/health', (_req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cv', cvRoutes);
+app.use('/api/user', userRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
