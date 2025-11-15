@@ -8,6 +8,7 @@ import { userStore } from '../models/UserStore';
 import { CV, CVResponse, CVData } from '../models/CV';
 import fs from 'fs/promises';
 import { cvExtractor } from '../services/cvExtractor';
+import { cvGenerator } from '../services/cvGenerator';
 
 const router = express.Router();
 
@@ -399,5 +400,150 @@ router.delete('/', authMiddleware, async (req: Request, res: Response): Promise<
     });
   }
 });
+
+// Route pour générer un CV en PDF avec LaTeX et Gemini
+router.post(
+  '/generate-pdf',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      // Récupérer le CV de l'utilisateur
+      const cv = await cvStore.findByUserId(userId);
+      if (!cv || !cv.data) {
+        res.status(404).json({ 
+          error: 'Aucun CV trouvé ou données de CV manquantes. Veuillez d\'abord créer ou uploader un CV.' 
+        });
+        return;
+      }
+
+      // Récupérer l'utilisateur pour obtenir la photo
+      const user = await userStore.findById(userId);
+      if (!user) {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+
+      // Déterminer le chemin de la photo si elle existe
+      let photoPath: string | undefined;
+      if (user.photoFilename) {
+        photoPath = path.join(__dirname, '../../uploads/photos', user.photoFilename);
+        
+        // Vérifier que la photo existe
+        try {
+          await fs.access(photoPath);
+        } catch {
+          console.warn('⚠️ Photo non trouvée:', photoPath);
+          photoPath = undefined;
+        }
+      }
+
+      // Créer le dossier pour les CVs générés
+      const generatedCVsDir = path.join(__dirname, '../../uploads/generated-cvs');
+      await fs.mkdir(generatedCVsDir, { recursive: true });
+
+      // Générer un nom de fichier unique pour le PDF
+      const pdfFilename = `cv_${userId}_${Date.now()}.pdf`;
+      const pdfPath = path.join(generatedCVsDir, pdfFilename);
+
+      console.log('🚀 Génération du CV PDF...');
+      console.log('📊 Données:', cv.data);
+      console.log('📷 Photo:', photoPath || 'Aucune photo');
+
+      // Générer le CV (LaTeX + PDF)
+      // Note: Le code LaTeX est automatiquement sauvegardé par generateCV
+      const { latexCode, pdfPath: generatedPdfPath } = await cvGenerator.generateCV(
+        cv.data,
+        photoPath,
+        pdfPath
+      );
+
+      console.log('✅ CV généré avec succès');
+      console.log('📦 Fichiers sauvegardés:');
+      console.log(`   - PDF: ${path.basename(generatedPdfPath)}`);
+      console.log(`   - LaTeX: ${path.basename(generatedPdfPath).replace('.pdf', '.tex')}`);
+
+      // Envoyer le fichier PDF
+      res.download(generatedPdfPath, `CV_${cv.data.name || 'Generated'}.pdf`, async (error) => {
+        if (error) {
+          console.error('❌ Erreur lors de l\'envoi du PDF:', error);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Erreur lors de l\'envoi du PDF' });
+          }
+        }
+        
+        // Les fichiers PDF et LaTeX sont conservés dans uploads/generated-cvs/
+        // pour historique et référence
+        console.log('📤 PDF envoyé avec succès au client');
+      });
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la génération du PDF:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de la génération du CV en PDF',
+      });
+    }
+  }
+);
+
+// Route pour obtenir le code LaTeX sans compiler (pour debug/preview)
+router.get(
+  '/latex',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      // Récupérer le CV de l'utilisateur
+      const cv = await cvStore.findByUserId(userId);
+      if (!cv || !cv.data) {
+        res.status(404).json({ 
+          error: 'Aucun CV trouvé ou données de CV manquantes' 
+        });
+        return;
+      }
+
+      // Récupérer l'utilisateur pour obtenir la photo
+      const user = await userStore.findById(userId);
+      if (!user) {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+
+      // Déterminer le chemin de la photo si elle existe
+      let photoPath: string | undefined;
+      if (user.photoFilename) {
+        photoPath = path.join(__dirname, '../../uploads/photos', user.photoFilename);
+        
+        try {
+          await fs.access(photoPath);
+        } catch {
+          photoPath = undefined;
+        }
+      }
+
+      console.log('📝 Génération du code LaTeX uniquement...');
+
+      // Générer uniquement le code LaTeX
+      const latexCode = await cvGenerator.generateLatex(cv.data, photoPath);
+
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(latexCode);
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la génération du LaTeX:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de la génération du code LaTeX',
+      });
+    }
+  }
+);
 
 export default router;
