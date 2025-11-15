@@ -4,16 +4,64 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { apiClient, ApiError, CVResponse } from "@/lib/api"
+import Script from "next/script"
 
 export default function DashboardPage() {
   const [cv, setCV] = useState<CVResponse | null>(null)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [widgetLoaded, setWidgetLoaded] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    loadCV()
+    checkOnboardingAndLoadCV()
   }, [])
+
+  useEffect(() => {
+    // Charger le script ElevenLabs et initialiser le widget
+    const loadWidget = () => {
+      const script = document.createElement('script')
+      script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed'
+      script.async = true
+      script.onload = () => {
+        console.log('ElevenLabs widget script loaded')
+        setWidgetLoaded(true)
+      }
+      script.onerror = () => {
+        console.error('Failed to load ElevenLabs widget script')
+      }
+      document.body.appendChild(script)
+
+      return () => {
+        // Cleanup: retirer le script lors du démontage
+        const existingScript = document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')
+        if (existingScript) {
+          document.body.removeChild(existingScript)
+        }
+      }
+    }
+
+    loadWidget()
+  }, [])
+
+  const checkOnboardingAndLoadCV = async () => {
+    try {
+      // Vérifier si l'utilisateur a complété l'onboarding
+      const user = await apiClient.getCurrentUser()
+      
+      // Si pas de CV ou pas de photo, rediriger vers onboarding
+      if (!user.cvId || !user.photoFilename) {
+        router.push('/onboarding')
+        return
+      }
+
+      // Charger le CV
+      loadCV()
+    } catch (err) {
+      console.error("Erreur:", err)
+      setIsLoading(false)
+    }
+  }
 
   const loadCV = async () => {
     try {
@@ -67,7 +115,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start border-b border-black pb-4">
           <div>
             <h1 className="text-3xl font-semibold text-black">My CV Dashboard</h1>
             <p className="text-sm text-gray-600">View and manage your CV information</p>
@@ -285,6 +333,15 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ElevenLabs Coach Widget (apparaît en bas à droite) */}
+      {widgetLoaded && (
+        <div 
+          dangerouslySetInnerHTML={{
+            __html: '<elevenlabs-convai agent-id="agent_6001ka3sd553eyysf894edmrrp0j"></elevenlabs-convai>'
+          }}
+        />
+      )}
     </div>
   )
 }

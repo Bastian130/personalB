@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,7 +24,15 @@ export default function LoginPage() {
     try {
       const response = await apiClient.login(email, password)
       console.log("Login successful:", response.user)
-      router.push("/") // Redirect to home page after successful login
+      
+      // Vérifier si l'utilisateur a complété l'onboarding (CV + Photo obligatoires)
+      if (!response.user.cvId || !response.user.photoFilename) {
+        router.push('/onboarding')
+      } else {
+        // Rediriger vers la page d'origine ou vers le dashboard
+        const redirectTo = searchParams.get('redirect') || '/dashboard'
+        router.push(redirectTo)
+      }
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.error || "An error occurred during login")
