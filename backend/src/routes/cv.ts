@@ -7,6 +7,7 @@ import { cvStore } from '../models/CVStore';
 import { userStore } from '../models/UserStore';
 import { CV, CVResponse, CVData } from '../models/CV';
 import fs from 'fs/promises';
+import { cvExtractor } from '../services/cvExtractor';
 
 const router = express.Router();
 
@@ -95,6 +96,21 @@ router.post(
         await cvStore.deleteById(existingCV.id);
       }
 
+      // Extraire les données du CV avec Gemini
+      let extractedData: CVData | undefined;
+      try {
+        console.log('🔍 Extraction des données du CV avec Gemini...');
+        extractedData = await cvExtractor.extractFromFile(
+          req.file.path,
+          req.file.mimetype
+        );
+        console.log('✅ Données extraites avec succès');
+      } catch (extractError) {
+        console.error('⚠️ Erreur lors de l\'extraction Gemini:', extractError);
+        // On continue sans les données extraites
+        // L'utilisateur pourra les ajouter manuellement plus tard
+      }
+
       // Créer l'entrée CV
       const cv: CV = {
         id: uuidv4(),
@@ -106,6 +122,7 @@ router.post(
         mimeType: req.file.mimetype,
         size: req.file.size,
         uploadDate: new Date(),
+        data: extractedData, // Données extraites par Gemini
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -133,6 +150,7 @@ router.post(
       res.status(201).json({
         message: 'CV uploadé avec succès',
         cv: cvResponse,
+        extracted: !!extractedData, // Indique si les données ont été extraites
       });
     } catch (error: any) {
       console.error('Erreur lors de l\'upload:', error);
@@ -230,6 +248,43 @@ router.post(
       console.error('Erreur lors de la sauvegarde manuelle:', error);
       res.status(500).json({
         error: error.message || 'Erreur lors de la sauvegarde du CV',
+      });
+    }
+  }
+);
+
+// Route pour extraire les données d'un texte brut avec Gemini
+router.post(
+  '/extract-text',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      const { text } = req.body;
+
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        res.status(400).json({ error: 'Texte manquant ou invalide' });
+        return;
+      }
+
+      // Extraire les données du texte avec Gemini
+      console.log('🔍 Extraction des données du texte avec Gemini...');
+      const extractedData = await cvExtractor.extractFromText(text);
+      console.log('✅ Données extraites avec succès');
+
+      res.json({
+        message: 'Données extraites avec succès',
+        data: extractedData,
+      });
+    } catch (error: any) {
+      console.error('Erreur lors de l\'extraction du texte:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de l\'extraction du texte',
       });
     }
   }
