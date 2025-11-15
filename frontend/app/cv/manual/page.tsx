@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,6 +56,8 @@ export default function ManualCVPage() {
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === 'true'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,8 +78,15 @@ export default function ManualCVPage() {
         projects: projects.filter(proj => proj.name)
       }
 
-      const response = await apiClient.createManualCV(cvData)
+      const response = await apiClient.saveManualCV(cvData)
       setSuccess(response.message || "CV saved successfully!")
+      
+      // Si c'est l'onboarding, rediriger vers l'étape 2
+      if (isOnboarding) {
+        setTimeout(() => {
+          router.push('/onboarding')
+        }, 1500)
+      }
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.error || "An error occurred while saving CV")
@@ -131,16 +140,22 @@ export default function ManualCVPage() {
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-3xl mx-auto space-y-8">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start border-b border-black pb-4">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-black">Create Your CV</h1>
-            <p className="text-sm text-gray-600">Fill in your professional information manually</p>
+            <h1 className="text-3xl font-semibold text-black">
+              {isOnboarding ? "Configuration - Votre CV" : "Create Your CV"}
+            </h1>
+            <p className="text-sm text-gray-600">
+              {isOnboarding ? "Étape 1 : Remplissez les informations de votre CV" : "Fill in your professional information manually"}
+            </p>
           </div>
-          <Link href="/dashboard">
-            <Button type="button" className="bg-gray-600 hover:bg-gray-700">
-              View Dashboard
-            </Button>
-          </Link>
+          {!isOnboarding && (
+            <Link href="/dashboard">
+              <Button type="button" className="bg-gray-600 hover:bg-gray-700">
+                View Dashboard
+              </Button>
+            </Link>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
