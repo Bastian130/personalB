@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { userStore } from '../models/UserStore';
+import { User } from '../models/User';
 import fs from 'fs/promises';
 import axios from 'axios';
 import FormData from 'form-data';
@@ -223,6 +224,86 @@ router.get(
       console.error('Erreur lors de la récupération du profil:', error);
       res.status(500).json({
         error: error.message || 'Erreur lors de la récupération du profil',
+      });
+    }
+  }
+);
+
+/**
+ * Route pour mettre à jour les informations du profil utilisateur
+ */
+router.put(
+  '/profile',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      const user = await userStore.findById(userId);
+      if (!user) {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+
+      // Récupérer les données à mettre à jour
+      const { name, email } = req.body;
+
+      // Valider les données
+      if (email && typeof email !== 'string') {
+        res.status(400).json({ error: 'Email invalide' });
+        return;
+      }
+
+      if (name && typeof name !== 'string') {
+        res.status(400).json({ error: 'Nom invalide' });
+        return;
+      }
+
+      // Vérifier que l'email n'est pas déjà utilisé par un autre utilisateur
+      if (email && email !== user.email) {
+        const existingUser = await userStore.findByEmail(email);
+        if (existingUser && existingUser.id !== userId) {
+          res.status(400).json({ error: 'Cet email est déjà utilisé' });
+          return;
+        }
+      }
+
+      // Préparer les données à mettre à jour
+      const updateData: Partial<User> = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
+
+      // Mettre à jour l'utilisateur
+      const updatedUser = await userStore.update(userId, updateData);
+
+      if (!updatedUser) {
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+        return;
+      }
+
+      // Préparer la réponse
+      const userResponse = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        cvId: updatedUser.cvId,
+        photoFilename: updatedUser.photoFilename,
+        photoUrl: updatedUser.photoFilename ? `/api/user/photo/${updatedUser.photoFilename}` : undefined,
+      };
+
+      res.json({
+        message: 'Profil mis à jour avec succès',
+        user: userResponse,
+      });
+
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour du profil:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de la mise à jour du profil',
       });
     }
   }

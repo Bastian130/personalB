@@ -254,6 +254,80 @@ router.post(
   }
 );
 
+// Route pour mettre à jour partiellement les données du CV
+router.put(
+  '/data',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      // Vérifier si l'utilisateur existe
+      const user = await userStore.findById(userId);
+      if (!user) {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+
+      // Vérifier si un CV existe
+      const existingCV = await cvStore.findByUserId(userId);
+      if (!existingCV) {
+        res.status(404).json({ error: 'Aucun CV trouvé. Veuillez d\'abord créer un CV.' });
+        return;
+      }
+
+      // Récupérer les données partielles à mettre à jour
+      const partialData: Partial<CVData> = req.body;
+
+      // Fusionner les données existantes avec les nouvelles
+      const updatedData: CVData = {
+        ...existingCV.data,
+        ...partialData,
+      };
+
+      // Mettre à jour le CV
+      const updated = await cvStore.update(existingCV.id, {
+        data: updatedData,
+        type: 'manual',
+      });
+
+      if (!updated) {
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du CV' });
+        return;
+      }
+
+      // Préparer la réponse
+      const cvResponse: CVResponse = {
+        id: updated.id,
+        userId: updated.userId,
+        type: updated.type,
+        filename: updated.filename,
+        originalName: updated.originalName,
+        mimeType: updated.mimeType,
+        size: updated.size,
+        uploadDate: updated.uploadDate,
+        data: updated.data,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      };
+
+      res.json({
+        message: 'Données du CV mises à jour avec succès',
+        cv: cvResponse,
+      });
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour des données:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de la mise à jour des données du CV',
+      });
+    }
+  }
+);
+
 // Route pour extraire les données d'un texte brut avec Gemini
 router.post(
   '/extract-text',
