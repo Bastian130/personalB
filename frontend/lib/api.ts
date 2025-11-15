@@ -16,55 +16,6 @@ export interface ApiError {
   details?: any;
 }
 
-export interface CVData {
-  name?: string;
-  email?: string;
-  phone?: string;
-  experiences?: Array<{
-    title: string;
-    company: string;
-    startDate: string;
-    endDate?: string;
-    description: string;
-    current?: boolean;
-  }>;
-  skills?: string[];
-  passions?: string[];
-  education?: Array<{
-    degree: string;
-    school: string;
-    startDate: string;
-    endDate?: string;
-    description?: string;
-  }>;
-  projects?: Array<{
-    name: string;
-    description: string;
-    technologies?: string[];
-    link?: string;
-  }>;
-  summary?: string;
-}
-
-export interface CVResponse {
-  id: string;
-  userId: string;
-  type: 'uploaded' | 'manual';
-  filename?: string;
-  originalName?: string;
-  mimeType?: string;
-  size?: number;
-  uploadDate?: Date;
-  data?: CVData;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CVCreateResponse {
-  message: string;
-  cv: CVResponse;
-}
-
 class ApiClient {
   private baseUrl: string;
 
@@ -94,8 +45,9 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const token = this.getAuthToken();
 
-    const headers: Record<string, string> = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      ...options.headers,
     };
 
     if (token) {
@@ -104,10 +56,7 @@ class ApiClient {
 
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
+      headers,
     });
 
     const data = await response.json();
@@ -141,23 +90,6 @@ class ApiClient {
 
   async getCurrentUser(): Promise<User> {
     return this.request<User>('/api/auth/me');
-  }
-
-  async createManualCV(cvData: CVData): Promise<CVCreateResponse> {
-    return this.request<CVCreateResponse>('/api/cv/manual', {
-      method: 'POST',
-      body: JSON.stringify(cvData),
-    });
-  }
-
-  async getMyCV(): Promise<CVResponse> {
-    return this.request<CVResponse>('/api/cv/me');
-  }
-
-  async deleteCV(): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/api/cv', {
-      method: 'DELETE',
-    });
   }
 
   logout(): void {
