@@ -1,0 +1,264 @@
+{
+  "name": "Personal B - Assistant de Coaching",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "personal-b",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c8d6e3f2-1234-5678-90ab-cdef12345678",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "personal-b-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "queryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Tu es Personal B, un coach carrière personnalisé.\\n\\nVoici le résumé du CV de l'utilisateur :\\n{{ $json.body.cv_summary }}\\n\\nVoici sa question :\\n\\\"{{ $json.body.user_question }}\\\"\\n\\nRéponds de manière personnalisée, courte, actionnable, avec des conseils pratiques et adaptés à son profil.\\nPas de texte inutile. Pas de justification. Va droit au but.\\nReste dans un ton professionnel mais accessible. Maximum 150 mots.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 500\n  }\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "name": "Gemini - Génération Réponse",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign1",
+              "name": "assistant_text",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "assign2",
+              "name": "user_question",
+              "value": "={{ $('Webhook').item.json.body.user_question }}",
+              "type": "string"
+            },
+            {
+              "id": "assign3",
+              "name": "cv_summary",
+              "value": "={{ $('Webhook').item.json.body.cv_summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5f6g7h8-90ab-cdef-1234-567890abcdef",
+      "name": "Extraire Texte Gemini",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{ $env.ELEVENLABS_VOICE_ID || 'EXAMPLEvoiceID123456' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{ $env.ELEVENLABS_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.assistant_text }}\",\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": {\n    \"stability\": 0.5,\n    \"similarity_boost\": 0.75\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio_data"
+            }
+          }
+        }
+      },
+      "id": "i9j0k1l2-3456-7890-abcd-ef1234567890",
+      "name": "ElevenLabs - Text-to-Speech",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "mode": "jsonToBinary",
+        "options": {}
+      },
+      "id": "m3n4o5p6-7890-abcd-ef12-34567890abcd",
+      "name": "Convertir Audio Binary",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final1",
+              "name": "assistant_text",
+              "value": "={{ $('Extraire Texte Gemini').item.json.assistant_text }}",
+              "type": "string"
+            },
+            {
+              "id": "final2",
+              "name": "assistant_audio_base64",
+              "value": "={{ $binary.audio_data.data }}",
+              "type": "string"
+            },
+            {
+              "id": "final3",
+              "name": "user_question",
+              "value": "={{ $('Extraire Texte Gemini').item.json.user_question }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "q7r8s9t0-abcd-ef12-3456-7890abcdef12",
+      "name": "Préparer Réponse Finale",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"user_question\": \"{{ $json.user_question }}\",\n  \"assistant_text\": \"{{ $json.assistant_text }}\",\n  \"assistant_audio_base64\": \"{{ $json.assistant_audio_base64 }}\"\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "u1v2w3x4-5678-90ab-cdef-1234567890ab",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Génération Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Génération Réponse": {
+      "main": [
+        [
+          {
+            "node": "Extraire Texte Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraire Texte Gemini": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs - Text-to-Speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs - Text-to-Speech": {
+      "main": [
+        [
+          {
+            "node": "Convertir Audio Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Audio Binary": {
+      "main": [
+        [
+          {
+            "node": "Préparer Réponse Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Réponse Finale": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-15T00:00:00.000Z",
+  "versionId": "1"
+}
+
