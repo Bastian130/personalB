@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,7 +24,15 @@ export default function LoginPage() {
     try {
       const response = await apiClient.login(email, password)
       console.log("Login successful:", response.user)
-      router.push("/") // Redirect to home page after successful login
+      
+      // Vérifier si l'utilisateur a complété l'onboarding (CV + Photo obligatoires)
+      if (!response.user.cvId || !response.user.photoFilename) {
+        router.push('/onboarding')
+      } else {
+        // Rediriger vers la page d'origine ou vers le dashboard
+        const redirectTo = searchParams.get('redirect') || '/dashboard'
+        router.push(redirectTo)
+      }
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.error || "An error occurred during login")
@@ -34,57 +43,90 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-black">Login</h1>
-          <p className="text-sm text-gray-600">Enter your credentials</p>
+    <div className="min-h-screen flex items-center justify-center bg-white p-4 relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.3) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <img
+            src="/logo.png"
+            alt="Personal B Logo"
+            className="w-64 h-64 mx-auto"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
-              {error}
+        {/* Card */}
+        <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100 relative" style={{ boxShadow: '0 0 80px rgba(251, 191, 36, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-black">Login</h2>
+              <p className="text-sm text-gray-500">Access your personal space</p>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="email@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-            />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12 rounded-xl border-gray-200 focus:border-black focus:ring-black transition-elegant"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12 rounded-xl border-gray-200 focus:border-black focus:ring-black transition-elegant"
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 rounded-xl bg-black hover:bg-gray-800 transition-elegant text-base font-medium shadow-elegant" 
+                disabled={isLoading}
+              >
+                {isLoading ? "Logging in..." : "Sign In"}
+              </Button>
+            </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">or</span>
+              </div>
+            </div>
+
+            <div className="text-center text-sm">
+              <span className="text-gray-600">Don't have an account? </span>
+              <Link href="/register" className="font-medium text-black hover:underline transition-elegant">
+                Sign Up
+              </Link>
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
-          </Button>
-        </form>
-
-        <div className="text-center text-sm">
-          <span className="text-black">No account? </span>
-          <Link href="/register" className="underline text-black">
-            Register
-          </Link>
         </div>
+
+        <p className="text-center text-xs text-gray-500 mt-6">
+          By continuing, you agree to our terms of service
+        </p>
       </div>
     </div>
   )

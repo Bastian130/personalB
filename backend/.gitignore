@@ -43,3 +43,9 @@ test-image.jpg
 test-image.png
 *.test.jpg
 *.test.png
+
+# Test output files
+test-output-*
+
+# Generated CVs (optionnel - à adapter selon vos besoins)
+# uploads/generated-cvs/

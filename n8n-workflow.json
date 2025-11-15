@@ -1,0 +1,144 @@
+{
+  "name": "Gemini - Base64 Simplifié",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ajouter-fleur",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file"
+        }
+      },
+      "id": "cfd51ec5-9ee9-4ef1-8e3c-c0f2aa6dd5fb",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        848,
+        240
+      ],
+      "webhookId": "ajouter-fleur-simple"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Préparer l'image et le prompt pour Gemini\n\n// Récupérer le fichier binaire\nlet binaryData = $binary.file || $binary.file0 || $binary.data;\n\nif (!binaryData) {\n  const keys = Object.keys($binary || {});\n  if (keys.length > 0) {\n    binaryData = $binary[keys[0]];\n  } else {\n    throw new Error('Aucun fichier trouvé dans la requête');\n  }\n}\n\n// Récupérer le prompt\nconst prompt = $json.prompt || $json.body?.prompt || 'modifier cette image';\n\nconsole.log('✅ Fichier reçu');\nconsole.log('   Type:', binaryData.mimeType || 'inconnu');\nconsole.log('   Nom:', binaryData.fileName || 'inconnu');\nconsole.log('   Prompt:', prompt);\n\nreturn {\n  json: {\n    prompt: prompt,\n    fileName: binaryData.fileName || 'image.jpg'\n  },\n  binary: {\n    originalImage: binaryData\n  }\n};"
+      },
+      "id": "880f2243-ea7d-4f85-a677-39cf5700473d",
+      "name": "Préparer pour Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "edit",
+        "prompt": "={{ $json.prompt }}",
+        "images": {
+          "values": [
+            {
+              "binaryPropertyName": "originalImage"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0eec49d7-ef0a-497f-81a0-b04786ad1072",
+      "name": "Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        240
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RIBopONgiKTsAXPq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "image/jpeg"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename=\"image_modifiee.jpg\""
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "64d79aeb-a0d2-4002-8611-4a9900b66b31",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1456,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Préparer pour Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer pour Gemini": {
+      "main": [
+        [
+          {
+            "node": "Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e7f36440-fbe2-4de0-9eb5-077b7c95da12",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0551fcab632f060933fad27e8a4aef5f9ff1cdd8466d25367ad55c2151bf8f8e"
+  },
+  "id": "paX55LOn7NpzYBHw",
+  "tags": []
+}
