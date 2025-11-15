@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { cvStore } from '../models/CVStore';
 import { userStore } from '../models/UserStore';
-import { CV, CVResponse } from '../models/CV';
+import { CV, CVResponse, CVData } from '../models/CV';
 import fs from 'fs/promises';
 
 const router = express.Router();
@@ -86,7 +86,9 @@ router.post(
       const existingCV = await cvStore.findByUserId(userId);
       if (existingCV) {
         try {
-          await fs.unlink(existingCV.path);
+          if (existingCV.path) {
+            await fs.unlink(existingCV.path);
+          }
         } catch (error) {
           console.error('Erreur lors de la suppression de l\'ancien CV:', error);
         }
@@ -97,12 +99,15 @@ router.post(
       const cv: CV = {
         id: uuidv4(),
         userId,
+        type: 'uploaded',
         filename: req.file.filename,
         originalName: req.file.originalname,
         path: req.file.path,
         mimeType: req.file.mimetype,
         size: req.file.size,
         uploadDate: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       await cvStore.create(cv);
@@ -114,12 +119,15 @@ router.post(
       const cvResponse: CVResponse = {
         id: cv.id,
         userId: cv.userId,
+        type: cv.type,
         filename: cv.filename,
         originalName: cv.originalName,
         mimeType: cv.mimeType,
         size: cv.size,
         uploadDate: cv.uploadDate,
-        extractedData: cv.extractedData,
+        data: cv.data,
+        createdAt: cv.createdAt,
+        updatedAt: cv.updatedAt,
       };
 
       res.status(201).json({
@@ -145,6 +153,88 @@ router.post(
   }
 );
 
+// Route pour créer/mettre à jour les données du CV manuellement
+router.post(
+  '/manual',
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as AuthRequest).userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Non authentifié' });
+        return;
+      }
+
+      // Vérifier si l'utilisateur existe
+      const user = await userStore.findById(userId);
+      if (!user) {
+        res.status(404).json({ error: 'Utilisateur non trouvé' });
+        return;
+      }
+
+      const cvData: CVData = req.body;
+
+      // Vérifier si un CV existe déjà
+      const existingCV = await cvStore.findByUserId(userId);
+
+      let cv: CV;
+
+      if (existingCV) {
+        // Mise à jour du CV existant
+        const updated = await cvStore.update(existingCV.id, {
+          data: cvData,
+          type: 'manual',
+        });
+
+        if (!updated) {
+          res.status(500).json({ error: 'Erreur lors de la mise à jour du CV' });
+          return;
+        }
+
+        cv = updated;
+      } else {
+        // Création d'un nouveau CV
+        cv = {
+          id: uuidv4(),
+          userId,
+          type: 'manual',
+          data: cvData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await cvStore.create(cv);
+        await userStore.update(userId, { cvId: cv.id });
+      }
+
+      // Préparer la réponse
+      const cvResponse: CVResponse = {
+        id: cv.id,
+        userId: cv.userId,
+        type: cv.type,
+        filename: cv.filename,
+        originalName: cv.originalName,
+        mimeType: cv.mimeType,
+        size: cv.size,
+        uploadDate: cv.uploadDate,
+        data: cv.data,
+        createdAt: cv.createdAt,
+        updatedAt: cv.updatedAt,
+      };
+
+      res.status(existingCV ? 200 : 201).json({
+        message: existingCV ? 'CV mis à jour avec succès' : 'CV créé avec succès',
+        cv: cvResponse,
+      });
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde manuelle:', error);
+      res.status(500).json({
+        error: error.message || 'Erreur lors de la sauvegarde du CV',
+      });
+    }
+  }
+);
+
 // Route pour récupérer le CV de l'utilisateur connecté
 router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -163,12 +253,15 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
     const cvResponse: CVResponse = {
       id: cv.id,
       userId: cv.userId,
+      type: cv.type,
       filename: cv.filename,
       originalName: cv.originalName,
       mimeType: cv.mimeType,
       size: cv.size,
       uploadDate: cv.uploadDate,
-      extractedData: cv.extractedData,
+      data: cv.data,
+      createdAt: cv.createdAt,
+      updatedAt: cv.updatedAt,
     };
 
     res.json(cvResponse);
@@ -195,6 +288,11 @@ router.get(
       const cv = await cvStore.findByUserId(userId);
       if (!cv) {
         res.status(404).json({ error: 'Aucun CV trouvé' });
+        return;
+      }
+
+      if (!cv.path || !cv.originalName) {
+        res.status(400).json({ error: 'Ce CV n\'a pas de fichier téléchargeable' });
         return;
       }
 
@@ -225,7 +323,9 @@ router.delete('/', authMiddleware, async (req: Request, res: Response): Promise<
 
     // Supprimer le fichier physique
     try {
-      await fs.unlink(cv.path);
+      if (cv.path) {
+        await fs.unlink(cv.path);
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression du fichier:', error);
     }
