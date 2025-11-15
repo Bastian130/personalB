@@ -532,8 +532,15 @@ router.get(
 
       console.log('📝 Génération du code LaTeX uniquement...');
 
+      // Déterminer le nom de fichier pour la photo si elle existe
+      let photoFilename: string | undefined;
+      if (photoPath) {
+        const photoExtension = path.extname(photoPath);
+        photoFilename = 'profile-photo' + photoExtension;
+      }
+
       // Générer uniquement le code LaTeX
-      const latexCode = await cvGenerator.generateLatex(cv.data, photoPath);
+      const latexCode = await cvGenerator.generateLatex(cv.data, photoPath, photoFilename);
 
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.send(latexCode);
