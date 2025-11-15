@@ -7,7 +7,7 @@ class CVGenerator {
   /**
    * Génère un CV en LaTeX à partir des données JSON et d'une photo
    */
-  async generateLatex(cvData: CVData, photoPath?: string): Promise<string> {
+  async generateLatex(cvData: CVData, photoPath?: string, photoFilename?: string): Promise<string> {
     try {
       const model = getGeminiModel();
 
@@ -15,7 +15,7 @@ class CVGenerator {
       const parts: any[] = [];
 
       // Si une photo est fournie, l'ajouter au contexte
-      if (photoPath) {
+      if (photoPath && photoFilename) {
         try {
           const photoData = await fs.readFile(photoPath);
           const photoBase64 = photoData.toString('base64');
@@ -29,7 +29,9 @@ class CVGenerator {
           });
 
           parts.push({
-            text: "Voici la photo professionnelle à intégrer dans le CV.\n\n",
+            text: `Voici la photo professionnelle à intégrer dans le CV.
+Le fichier photo sera nommé "${photoFilename}" dans le même répertoire que le fichier LaTeX.
+Utilise donc \\includegraphics{${photoFilename}} pour l'inclure (sans chemin, juste le nom du fichier).\n\n`,
           });
         } catch (error) {
           console.warn('⚠️ Impossible de charger la photo:', error);
@@ -129,7 +131,7 @@ Commence directement par \\documentclass et termine par \\end{document}.`,
    * Compile le code LaTeX en PDF
    * Utilise pdflatex si disponible, sinon latex.js
    */
-  async compileToPDF(latexCode: string, outputPath: string): Promise<void> {
+  async compileToPDF(latexCode: string, outputPath: string, photoPath?: string): Promise<void> {
     try {
       const { exec } = require('child_process');
       const util = require('util');
@@ -155,6 +157,19 @@ Commence directement par \\documentclass et termine par \\end{document}.`,
         const outputDir = path.dirname(outputPath);
         const baseName = path.basename(texPath);
         
+        // Copier la photo dans le répertoire de sortie si elle existe
+        if (photoPath) {
+          try {
+            const photoExtension = path.extname(photoPath);
+            const photoDestName = 'profile-photo' + photoExtension;
+            const photoDestPath = path.join(outputDir, photoDestName);
+            await fs.copyFile(photoPath, photoDestPath);
+            console.log('📷 Photo copiée pour la compilation:', photoDestName);
+          } catch (photoError) {
+            console.warn('⚠️ Impossible de copier la photo:', photoError);
+          }
+        }
+        
         // Compiler avec pdflatex (2 passes pour les références)
         try {
           await execPromise(
@@ -176,6 +191,13 @@ Commence directement par \\documentclass et termine par \\end{document}.`,
             '.fdb_latexmk',  // Latexmk database
             '.synctex.gz',   // SyncTeX
           ].map(ext => path.join(outputDir, baseNameWithoutExt + ext));
+          
+          // Ajouter la photo copiée à nettoyer
+          if (photoPath) {
+            const photoExtension = path.extname(photoPath);
+            const photoDestName = 'profile-photo' + photoExtension;
+            tempFiles.push(path.join(outputDir, photoDestName));
+          }
           
           console.log('🧹 Nettoyage des fichiers temporaires...');
           let cleanedCount = 0;
@@ -234,11 +256,18 @@ Commence directement par \\documentclass et termine par \\end{document}.`,
     outputPdfPath: string
   ): Promise<{ latexCode: string; pdfPath: string }> {
     try {
+      // Déterminer le nom de fichier pour la photo si elle existe
+      let photoFilename: string | undefined;
+      if (photoPath) {
+        const photoExtension = path.extname(photoPath);
+        photoFilename = 'profile-photo' + photoExtension;
+      }
+
       // Générer le code LaTeX
-      const latexCode = await this.generateLatex(cvData, photoPath);
+      const latexCode = await this.generateLatex(cvData, photoPath, photoFilename);
 
       // Compiler en PDF
-      await this.compileToPDF(latexCode, outputPdfPath);
+      await this.compileToPDF(latexCode, outputPdfPath, photoPath);
 
       return {
         latexCode,
