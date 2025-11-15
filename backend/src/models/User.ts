@@ -4,10 +4,12 @@ export interface User {
   password: string;
   name: string;
   createdAt: Date;
+  cvId?: string; // Reference to the user's CV
 }
 
 export interface UserResponse {
   id: string;
   email: string;
   name: string;
+  cvId?: string;
 }

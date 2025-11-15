@@ -18,6 +18,16 @@ class UserStore {
     return this.users.get(id);
   }
 
+  async update(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      this.users.set(id, updatedUser);
+      return updatedUser;
+    }
+    return undefined;
+  }
+
   async exists(email: string): Promise<boolean> {
     return Array.from(this.users.values()).some(u => u.email === email);
   }
