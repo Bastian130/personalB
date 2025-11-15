@@ -55,9 +55,48 @@ export default function ManualCVPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [hasExistingCV, setHasExistingCV] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
+
+  // Charger les données existantes du CV au montage
+  useEffect(() => {
+    const loadExistingCV = async () => {
+      try {
+        const cvData = await apiClient.getMyCV()
+        if (cvData.data) {
+          setHasExistingCV(true)
+          // Remplir les champs avec les données existantes
+          setName(cvData.data.name || "")
+          setEmail(cvData.data.email || "")
+          setPhone(cvData.data.phone || "")
+          setSummary(cvData.data.summary || "")
+          setSkills(cvData.data.skills?.join(", ") || "")
+          setPassions(cvData.data.passions?.join(", ") || "")
+
+          if (cvData.data.experiences && cvData.data.experiences.length > 0) {
+            setExperiences(cvData.data.experiences)
+          }
+
+          if (cvData.data.education && cvData.data.education.length > 0) {
+            setEducation(cvData.data.education)
+          }
+
+          if (cvData.data.projects && cvData.data.projects.length > 0) {
+            setProjects(cvData.data.projects)
+          }
+        }
+      } catch (err) {
+        // Pas de CV existant, on continue avec un formulaire vide
+        console.log("No existing CV found, starting fresh")
+      }
+    }
+
+    if (!isOnboarding) {
+      loadExistingCV()
+    }
+  }, [isOnboarding])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,9 +117,13 @@ export default function ManualCVPage() {
         projects: projects.filter(proj => proj.name)
       }
 
-      const response = await apiClient.saveManualCV(cvData)
+      // Utiliser PUT /data si un CV existe déjà, sinon POST /manual
+      const response = hasExistingCV
+        ? await apiClient.updateCVData(cvData)
+        : await apiClient.saveManualCV(cvData)
+
       setSuccess(response.message || "CV saved successfully!")
-      
+
       // Si c'est l'onboarding, rediriger vers l'étape 2
       if (isOnboarding) {
         setTimeout(() => {
@@ -171,10 +214,10 @@ export default function ManualCVPage() {
         <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-black">
-              {isOnboarding ? "Setup - Your CV" : "Create Your CV"}
+              {isOnboarding ? "Setup - Your CV" : hasExistingCV ? "Edit Your CV" : "Create Your CV"}
             </h1>
             <p className="text-sm text-gray-600">
-              {isOnboarding ? "Step 1: Fill in your CV information" : "Fill in your professional information manually"}
+              {isOnboarding ? "Step 1: Fill in your CV information" : hasExistingCV ? "Update your professional information" : "Fill in your professional information manually"}
             </p>
           </div>
         </div>
@@ -534,7 +577,7 @@ export default function ManualCVPage() {
           </div>
 
           <Button type="submit" className="w-full h-12 rounded-xl bg-black hover:bg-gray-800 transition-elegant shadow-elegant text-base font-medium" disabled={isLoading}>
-            {isLoading ? "Saving CV..." : "Save CV"}
+            {isLoading ? (hasExistingCV ? "Updating CV..." : "Saving CV...") : (hasExistingCV ? "Update CV" : "Save CV")}
           </Button>
         </form>
       </div>

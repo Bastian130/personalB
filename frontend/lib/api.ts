@@ -232,6 +232,13 @@ class ApiClient {
     });
   }
 
+  async updateCVData(cvData: Partial<CVData>): Promise<{ message: string; cv: CVResponse }> {
+    return this.request<{ message: string; cv: CVResponse }>('/api/cv/data', {
+      method: 'PUT',
+      body: JSON.stringify(cvData),
+    });
+  }
+
   async extractTextToCV(text: string): Promise<{ message: string; data: CVData }> {
     return this.request<{ message: string; data: CVData }>('/api/cv/extract-text', {
       method: 'POST',
