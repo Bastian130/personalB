@@ -40,60 +40,110 @@ Utilise donc \\includegraphics{${photoFilename}} pour l'inclure (sans chemin, ju
 
       // Ajouter les données du CV et les instructions
       parts.push({
-        text: `Tu es un expert en création de CV professionnels. Tu dois générer un CV au format LaTeX moderne, élégant et optimisé ATS (Applicant Tracking System).
+        text: `Tu es un expert en création de CV professionnels optimisés pour les systèmes ATS (Applicant Tracking System). Tu dois générer un CV au format LaTeX qui sera parfaitement scannable par les ATS tout en restant visuellement attractif.
 
 **DONNÉES DU CV :**
 ${JSON.stringify(cvData, null, 2)}
 
-**INSTRUCTIONS :**
+**RÈGLES CRITIQUES ATS :**
 
-1. **Format LaTeX professionnel** :
-   - Utilise une classe de document moderne (article avec geometry)
-   - Design épuré et professionnel
-   - Utilise des sections claires (\section, \subsection)
-   - Intègre la photo si elle est fournie (en haut à droite)
+1. **Structure et hiérarchie du document** :
+   - Utilise UNIQUEMENT la classe \\documentclass[11pt,a4paper]{article}
+   - ÉVITE les classes fancy comme moderncv, altacv qui ne sont pas ATS-friendly
+   - Structure simple et linéaire : en-tête → sections → contenu
+   - Marges standard : geometry avec margin=2cm
+   - Police standard : \\usepackage{helvet} + \\renewcommand{\\familydefault}{\\sfdefault}
 
-2. **Sections obligatoires** (dans cet ordre) :
-   - En-tête avec nom, email, téléphone
-   - Photo professionnelle (si fournie)
-   - Résumé professionnel (summary)
-   - Expériences professionnelles (experiences)
-   - Formations (education)
-   - Compétences techniques (skills)
-   - Projets (projects, si fournis)
-   - Passions/Centres d'intérêt (passions)
+2. **Titres de sections ATS-compatibles** (utilise EXACTEMENT ces noms en français) :
+   - PROFIL ou RÉSUMÉ PROFESSIONNEL
+   - EXPÉRIENCE PROFESSIONNELLE
+   - FORMATION
+   - COMPÉTENCES TECHNIQUES
+   - PROJETS (si applicable)
+   - CENTRES D'INTÉRÊT
 
-3. **Optimisation ATS** :
-   - Titres de section standards et reconnaissables
-   - Utilise des bullet points (\item) pour les listes
-   - Format CAR (Contexte-Action-Résultat) pour les expériences
-   - Mots-clés pertinents mis en évidence
-   - Pas de tableaux complexes ou d'images décoratives (sauf la photo de profil)
+3. **Formatage du contenu** :
+   - Une seule colonne principale pour le texte (la photo peut être en flottant)
+   - AUCUN tableau pour le contenu principal (les ATS ne les lisent pas bien)
+   - Utilise des listes simples avec \\begin{itemize} et \\item
+   - Évite les minipage imbriquées complexes
+   - Chaque expérience doit suivre ce format strict :
+     * Ligne 1: \\textbf{Titre du poste} -- Entreprise, Ville
+     * Ligne 2: \\textit{Date début - Date fin}
+     * Lignes suivantes: \\begin{itemize} avec réalisations
 
-4. **Style et formatage** :
-   - Police professionnelle (helvet ou similar)
-   - Utilise \textbf{} pour le gras
-   - Utilise \textit{} pour l'italique
-   - Dates au format "Mois AAAA - Mois AAAA"
-   - Espacement cohérent
+4. **Mots-clés et contenu ATS** :
+   - Utilise des verbes d'action au début de chaque bullet point
+   - Incorpore des mots-clés techniques directement dans le texte (pas en graphiques)
+   - Format CAR pour chaque réalisation : Contexte + Action + Résultat quantifié
+   - Inclus des chiffres et métriques pour quantifier les résultats
+   - Les compétences doivent être en texte pur, séparées par des virgules ou en liste simple
 
-5. **Image (si photo fournie)** :
-   - Place la photo en haut à droite
-   - Utilise un cadre circulaire ou carré avec bords arrondis
-   - Taille appropriée (environ 3cm x 3.5cm)
-   - Utilise le package graphicx
+5. **Photo professionnelle (si fournie)** :
+   - Utilise \\usepackage{graphicx} et \\usepackage{wrapfig}
+   - Place la photo avec \\begin{wrapfigure}{r}{3.5cm} en haut du document
+   - Forme : carrée ou rectangulaire simple (évite les formes complexes pour l'ATS)
+   - Taille : 3cm x 3.5cm maximum
+   - La photo ne doit PAS perturber le flux de lecture du texte pour l'ATS
 
-**CONTRAINTES :**
-- Le code LaTeX doit être COMPLET et COMPILABLE immédiatement
+6. **Packages autorisés et recommandés** :
+   - \\usepackage[utf8]{inputenc}
+   - \\usepackage[T1]{fontenc}
+   - \\usepackage[french]{babel}
+   - \\usepackage[margin=2cm]{geometry}
+   - \\usepackage{helvet}
+   - \\usepackage{graphicx} (pour la photo)
+   - \\usepackage{wrapfig} (pour la photo)
+   - \\usepackage{enumitem} (pour contrôler les listes)
+   - \\usepackage{hyperref} (pour email/téléphone cliquables, mais liens simples)
+   - \\usepackage{xcolor} (pour couleurs subtiles, pas trop de couleurs)
+
+7. **En-tête du document** :
+   - Nom en grand : \\textbf{\\Large NOM Prénom}
+   - Email et téléphone sur une ligne : \\href{mailto:email}{email} | Téléphone
+   - Format simple et clair, pas de design fantaisiste
+   - Tout doit être extractible en texte brut par l'ATS
+
+8. **Éléments à ÉVITER absolument** :
+   - ❌ Colonnes multiples pour le contenu principal
+   - ❌ Tableaux pour organiser les expériences ou compétences
+   - ❌ Graphiques, barres de progression, ou représentations visuelles des compétences
+   - ❌ Polices fantaisistes ou trop de variations de polices
+   - ❌ Headers/footers complexes
+   - ❌ Zones de texte ou boîtes colorées pour le contenu
+   - ❌ Images décoratives (seule la photo de profil est acceptée)
+   - ❌ Acronymes sans les définir la première fois
+
+**CONTRAINTES TECHNIQUES :**
+- Le code LaTeX doit être COMPLET, VALIDE et COMPILABLE immédiatement
 - Inclus TOUS les packages nécessaires dans le préambule
-- N'ajoute AUCUN commentaire ou explication, juste le code LaTeX pur
+- N'ajoute AUCUN commentaire LaTeX, juste du code pur
 - Si une donnée manque, crée un contenu professionnel générique approprié
-- Le document doit être en français
-- Utilise UTF-8 encoding
+- Document en français avec encodage UTF-8
+- Maximum 2 pages (préférablement 1 page si possible)
 
-**OUTPUT :**
-Retourne UNIQUEMENT le code LaTeX complet, sans aucun markdown, sans \`\`\`latex, sans commentaire.
-Commence directement par \\documentclass et termine par \\end{document}.`,
+**STRUCTURE TYPE DU DOCUMENT :**
+\`\`\`
+\\documentclass[11pt,a4paper]{article}
+[préambule avec packages]
+\\begin{document}
+[Photo en wrapfigure si fournie]
+[En-tête : nom + contacts]
+[Section PROFIL]
+[Section EXPÉRIENCE PROFESSIONNELLE]
+[Section FORMATION]
+[Section COMPÉTENCES TECHNIQUES]
+[Section PROJETS si applicable]
+[Section CENTRES D'INTÉRÊT]
+\\end{document}
+\`\`\`
+
+**OUTPUT ATTENDU :**
+Retourne UNIQUEMENT le code LaTeX complet et prêt à compiler.
+- Commence directement par \\documentclass
+- Termine par \\end{document}
+- Aucun markdown, aucun \`\`\`latex, aucune explication
+- Code propre et indenté correctement`,
       });
 
       console.log('🎨 Génération du CV LaTeX avec Gemini...');

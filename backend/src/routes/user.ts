@@ -89,12 +89,23 @@ router.post(
         return;
       }
 
-      // Récupérer le prompt optionnel (par exemple: "ajoute un fond professionnel")
-      const prompt = req.body.prompt || 'optimise cette photo pour un CV professionnel';
+      // Récupérer le prompt optionnel ou utiliser le prompt détaillé par défaut
+      const defaultPrompt = `Transforme cette photo en une photo professionnelle de CV parfaite :
+- Ajoute un arrière-plan neutre et professionnel (gris clair, bleu clair ou blanc)
+- Habille la personne de manière formelle et professionnelle (costume, chemise, cravate pour homme / tailleur, chemisier pour femme)
+- Assure-toi que la personne porte des vêtements business appropriés
+- Cadrage professionnel : portrait épaules et tête
+- Éclairage doux et flatreur
+- Expression faciale neutre et confiante, légèrement souriante
+- Photo haute qualité, nette et bien exposée
+- Style : photo d'identité professionnelle LinkedIn
+- Garde les traits du visage naturels et reconnaissables`;
+
+      const prompt = req.body.prompt || defaultPrompt;
 
       console.log('📸 Traitement de la photo de profil...');
       console.log(`   Image: ${req.file.originalname}`);
-      console.log(`   Prompt: "${prompt}"`);
+      console.log(`   Prompt: "${prompt.substring(0, 100)}..."`);
       console.log(`   URL: ${N8N_WEBHOOK_URL}`);
 
       // Préparer FormData pour envoyer au webhook n8n
@@ -107,6 +118,10 @@ router.post(
 
       try {
         // Envoyer au webhook n8n
+        console.log('🔄 Envoi de la requête au webhook n8n...');
+        console.log(`   URL: ${N8N_WEBHOOK_URL}`);
+        console.log(`   Headers:`, formData.getHeaders());
+        
         const response = await axios.post(N8N_WEBHOOK_URL, formData, {
           headers: formData.getHeaders(),
           responseType: 'arraybuffer',
@@ -153,9 +168,19 @@ router.post(
       } catch (webhookError: any) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         console.error(`❌ Erreur webhook (${duration}s):`, webhookError.message);
-
+        console.error('📋 Détails de l\'erreur:');
+        console.error(`   Code: ${webhookError.code || 'N/A'}`);
+        console.error(`   Status: ${webhookError.response?.status || 'N/A'}`);
+        console.error(`   Response: ${webhookError.response?.data ? webhookError.response.data.toString().substring(0, 200) : 'N/A'}`);
+        
         // En cas d'erreur du webhook, on garde quand même l'image originale
         console.log('⚠️  Le workflow n8n a échoué, conservation de l\'image originale');
+
+        // Mettre à jour le profil utilisateur avec la photo originale (non traitée)
+        await userStore.update(userId, {
+          photoFilename: req.file.filename,
+          photoOriginalName: req.file.originalname,
+        });
 
         res.status(200).json({
           message: 'Photo uploadée (traitement n8n échoué)',
@@ -163,6 +188,7 @@ router.post(
           photo: {
             originalFilename: req.file.filename,
             originalName: req.file.originalname,
+            photoUrl: `/api/user/photo/${req.file.filename}`,
             size: req.file.size,
             prompt,
           },
