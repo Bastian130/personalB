@@ -99,7 +99,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 sm:p-8 relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.3) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
+    <div className="min-h-screen bg-white p-4 sm:p-8 relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.6) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

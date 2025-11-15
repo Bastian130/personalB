@@ -11,6 +11,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [widgetLoaded, setWidgetLoaded] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateSuccess, setGenerateSuccess] = useState("")
   const router = useRouter()
 
   useEffect(() => {
@@ -101,9 +103,37 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
+  const handleGenerateCV = async () => {
+    setIsGenerating(true)
+    setError("")
+    setGenerateSuccess("")
+
+    try {
+      const blob = await apiClient.generatePDF()
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `CV_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      setGenerateSuccess("CV generated successfully! Check your downloads.")
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.error || "Failed to generate CV. Please try again.")
+      console.error("CV generation error:", err)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.3) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
+      <div className="min-h-screen bg-white flex items-center justify-center relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.6) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
         <div className="text-center space-y-4">
           <div className="inline-block p-4 bg-black rounded-2xl shadow-elegant-lg">
             <div className="w-12 h-12 flex items-center justify-center">
@@ -117,7 +147,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.3) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
+    <div className="min-h-screen bg-white relative" style={{ backgroundImage: 'linear-gradient(rgba(229, 231, 235, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(229, 231, 235, 0.6) 1px, transparent 1px)', backgroundSize: '50px 50px' }}>
       {/* Floating Glass Navbar */}
       <nav className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 w-11/12 max-w-6xl">
         <div
@@ -130,9 +160,9 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <img
-                src="/logo.png"
+                src="/logonav.png"
                 alt="Personal B Logo"
-                className="w-16 h-16"
+                className="w-10 h-10"
               />
             </div>
             <div className="flex items-center space-x-3">
@@ -140,7 +170,7 @@ export default function DashboardPage() {
                 onClick={handleEdit}
                 className="h-9 rounded-full bg-black hover:bg-gray-800 transition-elegant shadow-elegant px-5 text-sm"
               >
-                {cv ? "✏️ Edit" : "➕ Create CV"}
+                {cv ? "Edit" : "Create CV"}
               </Button>
               <Button
                 onClick={handleLogout}
@@ -156,7 +186,7 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-28">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-36">
         {error && !cv && (
           <div className="bg-white rounded-3xl shadow-elegant-lg p-12 border border-gray-100 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -177,6 +207,54 @@ export default function DashboardPage() {
 
         {cv && (
           <div className="space-y-6">
+            {/* Success Message */}
+            {generateSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-green-700">
+                {generateSuccess}
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+                {error}
+              </div>
+            )}
+
+            {/* Generate CV Button */}
+            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-3xl shadow-elegant-lg p-8 border border-yellow-300" style={{ boxShadow: '0 0 60px rgba(251, 191, 36, 0.5), 0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-black text-black bg-clip-text" style={{ letterSpacing: '-0.02em' }}>
+                    Your Perfect CV Awaits
+                  </h2>
+                  <p className="text-black/70 font-medium mt-1">One click away from success</p>
+                </div>
+                <Button
+                  onClick={handleGenerateCV}
+                  disabled={isGenerating}
+                  className="h-14 rounded-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black transition-all duration-300 shadow-2xl px-10 text-white font-bold text-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  style={{
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(251, 191, 36, 0.3)',
+                  }}
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Generating...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Generate
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-2xl shadow-elegant p-6 border border-gray-100 hover:shadow-elegant-lg transition-elegant">
@@ -215,9 +293,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-600 mb-1">Quick Actions</p>
                     <Button
                       onClick={handleDelete}
-                      className="mt-2 h-9 rounded-lg bg-red-600 hover:bg-red-700 transition-elegant text-sm"
+                      className="mt-2 h-9 rounded-lg bg-yellow-400 hover:bg-yellow-500 transition-elegant text-sm text-black"
                     >
-                      🗑️ Delete
+                      Delete
                     </Button>
                   </div>
                   <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
@@ -234,8 +312,8 @@ export default function DashboardPage() {
               <>
                 <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
                   <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
-                    <span className="w-10 h-10 bg-black rounded-xl flex items-center justify-center mr-3">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </span>
@@ -273,8 +351,8 @@ export default function DashboardPage() {
                 {cv.data.skills && cv.data.skills.length > 0 && (
                   <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
                     <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
-                      <span className="w-10 h-10 bg-black rounded-xl flex items-center justify-center mr-3">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                       </span>
@@ -297,8 +375,8 @@ export default function DashboardPage() {
                 {cv.data.passions && cv.data.passions.length > 0 && (
                   <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
                     <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
-                      <span className="w-10 h-10 bg-black rounded-xl flex items-center justify-center mr-3">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </span>
@@ -319,13 +397,18 @@ export default function DashboardPage() {
 
                 {/* Work Experience */}
                 {cv.data.experiences && cv.data.experiences.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold text-black border-b pb-2">
+                  <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
+                    <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
+                      <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </span>
                       Work Experience
                     </h2>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {cv.data.experiences.map((exp, index) => (
-                        <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                        <div key={index} className="pb-6 border-b border-gray-200 last:border-0 last:pb-0">
                           <div className="flex justify-between items-start mb-2">
                             <div>
                               <h3 className="text-lg font-semibold text-black">{exp.title}</h3>
@@ -356,11 +439,18 @@ export default function DashboardPage() {
 
                 {/* Education */}
                 {cv.data.education && cv.data.education.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold text-black border-b pb-2">Education</h2>
-                    <div className="space-y-4">
+                  <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
+                    <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
+                      <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </span>
+                      Education
+                    </h2>
+                    <div className="space-y-6">
                       {cv.data.education.map((edu, index) => (
-                        <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                        <div key={index} className="pb-6 border-b border-gray-200 last:border-0 last:pb-0">
                           <div className="flex justify-between items-start mb-2">
                             <div>
                               <h3 className="text-lg font-semibold text-black">{edu.degree}</h3>
@@ -384,11 +474,18 @@ export default function DashboardPage() {
 
                 {/* Projects */}
                 {cv.data.projects && cv.data.projects.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold text-black border-b pb-2">Projects</h2>
-                    <div className="space-y-4">
+                  <div className="bg-white rounded-3xl shadow-elegant-lg p-8 border border-gray-100">
+                    <h2 className="text-2xl font-bold text-black mb-6 flex items-center">
+                      <span className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </span>
+                      Projects
+                    </h2>
+                    <div className="space-y-6">
                       {cv.data.projects.map((project, index) => (
-                        <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                        <div key={index} className="pb-6 border-b border-gray-200 last:border-0 last:pb-0">
                           <h3 className="text-lg font-semibold text-black mb-2">
                             {project.name}
                           </h3>

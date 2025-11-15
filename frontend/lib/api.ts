@@ -248,13 +248,34 @@ class ApiClient {
   async downloadCV(): Promise<Blob> {
     const token = this.getAuthToken();
     const headers: Record<string, string> = {};
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${this.baseUrl}/api/cv/download`, {
       method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw data as ApiError;
+    }
+
+    return response.blob();
+  }
+
+  async generatePDF(): Promise<Blob> {
+    const token = this.getAuthToken();
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/cv/generate-pdf`, {
+      method: 'POST',
       headers,
     });
 
