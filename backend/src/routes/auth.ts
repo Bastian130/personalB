@@ -30,6 +30,7 @@ const toUserResponse = (user: User): UserResponse => ({
 });
 
 // POST /api/auth/register
+// TODO: Add rate limiting in production (express-rate-limit)
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request body
@@ -77,6 +78,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 });
 
 // POST /api/auth/login
+// TODO: Add rate limiting in production (express-rate-limit)
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request body
@@ -117,6 +119,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /api/auth/me - Protected route
+// TODO: Add rate limiting in production (express-rate-limit)
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const user = await userStore.findById(req.userId!);
