@@ -22,12 +22,10 @@ export default function LoginPage() {
 
     try {
       const response = await apiClient.login(email, password)
-      console.log("Login successful:", response.user)
-      router.push("/") // Redirect to home page after successful login
+      router.push("/dashboard") // Redirect to dashboard after successful login
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.error || "An error occurred during login")
-      console.error("Login error:", err)
     } finally {
       setIsLoading(false)
     }

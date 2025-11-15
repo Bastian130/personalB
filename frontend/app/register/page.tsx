@@ -23,12 +23,10 @@ export default function RegisterPage() {
 
     try {
       const response = await apiClient.register(email, password, name)
-      console.log("Registration successful:", response.user)
-      router.push("/") // Redirect to home page after successful registration
+      router.push("/dashboard") // Redirect to dashboard after successful registration
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.error || "An error occurred during registration")
-      console.error("Registration error:", err)
     } finally {
       setIsLoading(false)
     }
