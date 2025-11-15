@@ -20,13 +20,24 @@ class CVStore {
 
   async updateExtractedData(
     id: string,
-    extractedData: CV['extractedData']
+    data: CV['data']
   ): Promise<CV | undefined> {
     const cv = this.cvs.get(id);
     if (cv) {
-      cv.extractedData = extractedData;
+      cv.data = data;
+      cv.updatedAt = new Date();
       this.cvs.set(id, cv);
       return cv;
+    }
+    return undefined;
+  }
+
+  async update(id: string, updates: Partial<CV>): Promise<CV | undefined> {
+    const cv = this.cvs.get(id);
+    if (cv) {
+      const updatedCV = { ...cv, ...updates, updatedAt: new Date() };
+      this.cvs.set(id, updatedCV);
+      return updatedCV;
     }
     return undefined;
   }
